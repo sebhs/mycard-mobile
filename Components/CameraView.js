@@ -13,124 +13,133 @@ import {
   Keyboard,
   TouchableWithoutFeedback
 } from "react-native";
-import {
-  TextField,
-  FilledTextField,
-  OutlinedTextField
-} from "react-native-material-textfield";
+
+import { WebView } from "react-native-webview";
+import { Constants } from "expo";
 import * as FileSystem from "expo-file-system";
-import { QRCode } from "react-native-custom-qr-codes-expo";
+
 import * as Permissions from "expo-permissions";
 import { Camera } from "expo-camera";
-import Swiper from "react-native-swiper";
-import randomcolor from "randomcolor";
+
+import { BarCodeScanner } from "expo-barcode-scanner";
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: "5%",
-    justifyContent: "flex-start"
-  },
-  imageView: {
-    padding: "10%",
-    flex: 1,
-    alignSelf: "center",
-    resizeMode: "contain"
-  },
-  img: {
-    width: 100,
-    height: 100,
-    borderRadius: 50
-  },
-  nameView: {
-    flex: 1,
-    alignSelf: "center",
-    justifyContent: "center"
-  },
-  qrcodeView: {
-    flex: 4,
-    alignSelf: "center",
-    justifyContent: "center"
-  },
-  cameraButtonView: {
+  WebViewContainer: {
     flex: 1
-  },
-  cameraButton: {
-    marginTop: 20,
-    width: "80%",
-    height: "80%",
-    alignItems: "center",
-    alignSelf: "center"
   }
 });
-
+const ServerURL =
+  "https://firebasestorage.googleapis.com/v0/b/mycard-93892.appspot.com";
 export default class CameraView extends React.Component {
-  constructor() {
-    super();
-    this.state = {};
-  }
+  //   constructor() {
+  //     super();
+  //     this.state = {};
+  //   }
 
-  async componentDidMount() {
-    const { status } = await Permissions.askAsync(Permissions.CAMERA);
-    this.setState({ hasCameraPermission: status === "granted" });
-  }
+  //   async componentDidMount() {
+  //     const { status } = await Permissions.askAsync(Permissions.CAMERA);
+  //     this.setState({ hasCameraPermission: status === "granted" });
+  //   }
 
-  formatText = text => {
-    return text.replace(/[^+\d]/g, "");
+  //   render() {
+  //     const { hasCameraPermission } = this.state;
+  //     if (hasCameraPermission === null) {
+  //       return <View />;
+  //     } else if (hasCameraPermission === false) {
+  //       return <Text>No access to camera</Text>;
+  //     } else {
+  //       return (
+  //         <View style={{ flex: 1 }}>
+  //           <Camera style={{ flex: 1 }}>
+
+  //           </Camera>
+  //         </View>
+  //       );
+  //     }
+  //   }
+  // }
+
+  state = {
+    hasCameraPermission: null,
+    scanned: false
   };
 
-  viewStyle() {
-    return {
-      flex: 1,
-      backgroundColor: randomcolor(),
-      justifyContent: "center",
-      alignItems: "center"
-    };
+  async componentDidMount() {
+    this.getPermissionsAsync();
   }
 
+  downloadContact = uri => {
+    FileSystem.downloadAsync(uri)
+      .then(({ uri }) => {
+        console.log("Finished downloading to ", uri);
+        this.setState({ scanned: false });
+      })
+      .catch(error => {
+        console.error(error);
+      });
+  };
+
+  getPermissionsAsync = async () => {
+    const { status } = await Permissions.askAsync(Permissions.CAMERA);
+    this.setState({ hasCameraPermission: status === "granted" });
+  };
+
   render() {
-    const { hasCameraPermission } = this.state;
+    const { hasCameraPermission, scanned } = this.state;
+
     if (hasCameraPermission === null) {
-      return <View />;
-    } else if (hasCameraPermission === false) {
-      return <Text>No access to camera</Text>;
-    } else {
-      return (
-        <View style={{ flex: 1 }}>
-          <Camera style={{ flex: 1 }} type={this.state.type}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "transparent",
-                flexDirection: "row"
-              }}
-            >
-              <TouchableOpacity
-                style={{
-                  flex: 0.1,
-                  alignSelf: "flex-end",
-                  alignItems: "center"
-                }}
-                onPress={() => {
-                  this.setState({
-                    type:
-                      this.state.type === Camera.Constants.Type.back
-                        ? Camera.Constants.Type.front
-                        : Camera.Constants.Type.back
-                  });
-                }}
-              >
-                <Text
-                  style={{ fontSize: 18, marginBottom: 10, color: "white" }}
-                >
-                  {" "}
-                  Flip{" "}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Camera>
-        </View>
-      );
+      return <Text>Requesting for camera permission</Text>;
     }
+    if (hasCameraPermission === false) {
+      return <Text>No access to camera</Text>;
+    }
+    return (
+      <View
+        style={{
+          flex: 1,
+          flexDirection: "column",
+          justifyContent: "flex-end",
+          height: "50%",
+          width: "100%"
+        }}
+      >
+        <BarCodeScanner
+          onBarCodeScanned={scanned ? undefined : this.handleBarCodeScanned}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </View>
+    );
   }
+
+  handleBarCodeScanned = ({ type, data }) => {
+    this.setState({ scanned: true });
+    if (
+      type !== `org.iso.QRCode` ||
+      !data.startsWith(
+        "https://firebasestorage.googleapis.com/v0/b/mycard-93892.appspot.com"
+      )
+    ) {
+      Alert.alert("Invalid mycard QR code");
+      this.setState({ scanned: false });
+    } else {
+      const cardID = data.match(new RegExp("o/" + "(.*)" + ".vcf"))[1];
+      const { API, getCurrentAccessToken } = this.props;
+      console.log(`API: ${API} getCurrentAccessToken${getCurrentAccessToken}`)
+      fetch(`${API}/addCard/${cardID}`, {
+        headers: new Headers({
+          Authorization: "Bearer " + getCurrentAccessToken()
+        })
+      })
+        .then(() => {
+          this.setState({ scanned: false });
+        })
+        .catch(err => {
+          console.error(err);
+        });
+    }
+    //this.downloadContact(data)
+    console.log(
+      `Bar code with type ${type} and data ${data} has been scanned!`
+    );
+  };
 }

@@ -17,11 +17,15 @@ import {
   FilledTextField,
   OutlinedTextField
 } from "react-native-material-textfield";
+import { createStackNavigator } from 'react-navigation-stack';
+
+import firestore from '../../firebase'
+import firebase from 'firebase';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: "5%",
+    padding: "7%",
     justifyContent: "flex-start"
   },
   logo: {
@@ -57,7 +61,6 @@ const styles = StyleSheet.create({
     color: "#389EFF",
     fontSize: 23
   }
-
 });
 
 export default class Signup extends React.Component {
@@ -67,6 +70,7 @@ export default class Signup extends React.Component {
       email: ""
     };
   }
+
 
   emailFieldRef = React.createRef();
   passwordFieldRef = React.createRef();
@@ -132,7 +136,7 @@ export default class Signup extends React.Component {
         <View style={styles.container}>
           <View style={styles.logo}>
             <Image
-              source={require("../assets/img/mycardlogo.png")}
+              source={require("../../assets/img/mycardlogo.png")}
               style={styles.logo}
             />
           </View>
