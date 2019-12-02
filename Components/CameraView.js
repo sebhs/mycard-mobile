@@ -119,8 +119,15 @@ export default class CameraView extends React.Component {
         "https://firebasestorage.googleapis.com/v0/b/mycard-93892.appspot.com"
       )
     ) {
-      Alert.alert("Invalid mycard QR code");
-      this.setState({ scanned: false });
+      //Alert.alert("Invalid mycard QR code"); 
+      Alert.alert(
+        'Invalid QR code',
+        "Seems like you didn't scan a my.card QR code 🙃" ,
+        [        
+          { text: 'OK', onPress: () => this.setState({ scanned: false }) },
+        ],
+        { cancelable: false }
+      );
     } else {
       const cardID = data.match(new RegExp("o/" + "(.*)" + ".vcf"))[1];
       const { API, getCurrentAccessToken } = this.props;

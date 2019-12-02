@@ -28,12 +28,15 @@ import Swiper from "react-native-swiper";
 import randomcolor from "randomcolor";
 import CameraView from "./CameraView";
 import firebase from "firebase";
-import firestore from "./../firebase"
+import firestore from "./../firebase";
 import * as Contacts from "expo-contacts";
-import {reduceContact} from "../util"
-
+import { reduceContact } from "../util";
 
 const styles = StyleSheet.create({
+  areaView: {
+    flex: 1,
+    backgroundColor: "#ffffff"
+  },
   container: {
     flex: 1,
     padding: "5%",
@@ -98,7 +101,7 @@ export default class Home extends React.Component {
       token: 0,
       imgURI: "",
       swipeIndex: 0,
-      currentUserID:""
+      currentUserID: ""
     };
   }
 
@@ -118,11 +121,7 @@ export default class Home extends React.Component {
     // const { status } = await Permissions.askAsync(Permissions.CAMERA);
     // this.setState({ hasCameraPermission: status === "granted" });
 
-    this.loginUser()
-      .then(() => {
-        
-        return this.getCurrentCard();
-      })
+    this.getCurrentCard()
       .then(contact => {
         if (contact.code) {
           //there was login error
@@ -147,7 +146,7 @@ export default class Home extends React.Component {
     //console.log(currentUser)
     currentUser = JSON.parse(JSON.stringify(currentUser)); //this is the weirdest thing ever - no idea why I have to do this... but doesn't work without it WTF!
     return currentUser.uid;
-  }
+  };
   getCurrentAccessToken = () => {
     let { currentUser } = firebase.auth();
     currentUser = JSON.parse(JSON.stringify(currentUser)); //this is the weirdest thing ever - no idea why I have to do this... but doesn't work without it WTF!
@@ -156,69 +155,69 @@ export default class Home extends React.Component {
 
   handleNewContact = () => {
     //TODO: decompose below
-  }
+  };
 
   listenOnContacts = () => {
-    const contactsRef = firestore.doc(`/users/${this.getCurrentUserID()}`).collection("contacts")
+    const contactsRef = firestore
+      .doc(`/users/${this.getCurrentUserID()}`)
+      .collection("contacts");
     this.unsubscribe = contactsRef.onSnapshot(querySnapshot => {
-    querySnapshot.docChanges().forEach(change => {
-      if (change.type === 'added') {
-        const contactObj = change.doc.data();
-        if(contactObj.internalContactID === "") {
-          console.log('ADDED: ', JSON.stringify(change.doc.data()));
-          ///Decompose///
-          let reducedContact = contactObj.contactBody.contactInfo 
-          if(reducedContact.rawImage) {
+      querySnapshot.docChanges().forEach(change => {
+        if (change.type === "added") {
+          const contactObj = change.doc.data();
+          if (contactObj.internalContactID === "") {
+            console.log("ADDED: ", JSON.stringify(change.doc.data()));
+            ///Decompose///
+            let reducedContact = contactObj.contactBody.contactInfo;
+            if (reducedContact.rawImage) {
               delete reducedContact.rawImage;
-          }
-          if(reducedContact.imageAvailable) {
+            }
+            if (reducedContact.imageAvailable) {
               delete reducedContact.imageAvailable;
-          }
-          if(reducedContact.image) {
+            }
+            if (reducedContact.image) {
               delete reducedContact.image;
-          }
-          if(reducedContact.id) {
+            }
+            if (reducedContact.id) {
               delete reducedContact.id;
+            }
+            let internalContactID = "";
+            ///////////////////////
+            Contacts.addContactAsync(reducedContact)
+              .then(contactId => {
+                //save in DB
+                internalContactID = contactId;
+                return contactsRef.doc(contactObj.cardID).update({
+                  internalContactID: internalContactID
+                });
+              })
+              .then(() => {
+                return Contacts.presentFormAsync(internalContactID, null, {
+                  cancelButtonTitle: "Add"
+                });
+              })
+              .catch(err => {
+                console.error(err);
+                //File 'file:///var/mobile/Containers/Data/Application/22DD1929-6E33-4163-80B1-5812EAA83F57/Library/Caches/ExponentExperienceData/%2540anonymous%252Fmycard-react-native-22059536-b640-4f70-8d7c-55f1bfbc0c2a/Contacts/16B7A5A4-87D8-4AC6-ABB9-36B2357826DD:ABPerson-thumbnailImageData.png' isn't readable.
+              });
+          } else {
+            //contact already in contact book
           }
-          let internalContactID =""
-          ///////////////////////
-          Contacts.addContactAsync(reducedContact)
-          .then(contactId => {
-            //save in DB
-            internalContactID = contactId;
-            return contactsRef
-            .doc(contactObj.cardID)
-            .update({
-              internalContactID:internalContactID
-            })
-          }).then(() => {
-            return Contacts.presentFormAsync(internalContactID,null, {
-              cancelButtonTitle:"Add"
-            })
-          })
-          .catch(err => { 
-            console.error(err)
-            //File 'file:///var/mobile/Containers/Data/Application/22DD1929-6E33-4163-80B1-5812EAA83F57/Library/Caches/ExponentExperienceData/%2540anonymous%252Fmycard-react-native-22059536-b640-4f70-8d7c-55f1bfbc0c2a/Contacts/16B7A5A4-87D8-4AC6-ABB9-36B2357826DD:ABPerson-thumbnailImageData.png' isn't readable.
-          })
-
-        } else {
-          //contact already in contact book
         }
-      }
-      if (change.type === 'modified') {
-        console.log('Modified: ', change.doc.data());
-      }
-      if (change.type === 'removed') {
-        console.log('Removed  ', change.doc.data());
-      }
+        if (change.type === "modified") {
+          console.log("Modified: ", change.doc.data());
+        }
+        if (change.type === "removed") {
+          console.log("Removed  ", change.doc.data());
+        }
+      });
     });
-  });
-  }
+  };
 
-  componentWillUnmount(){
+  componentWillUnmount() {
     this.unsubscribe();
   }
-  
+
   loginUser = () => {
     const user = {
       email: "neo.davis@gmail.com",
@@ -230,9 +229,9 @@ export default class Home extends React.Component {
       .signInWithEmailAndPassword(user.email, user.password)
       .then(loginObj => {
         loginObj = JSON.parse(JSON.stringify(loginObj)); //this is the weirdest thing ever - no idea why I have to do this... but doesn't work without it WTF!
-        
-       //const token = loginObj.user.stsTokenManager.accessToken;
-       // return AsyncStorage.setItem("user-token", token);
+
+        //const token = loginObj.user.stsTokenManager.accessToken;
+        // return AsyncStorage.setItem("user-token", token);
       })
       .catch(err => {
         console.error(err);
@@ -241,13 +240,15 @@ export default class Home extends React.Component {
 
   getImageURI = () => {
     const internalContactID = this.state.contact.contactBody.contactInfo.id;
-    Contacts.getContactByIdAsync(internalContactID).then(contact => {
-      if(contact) {
-        this.setState({ imgURI: contact.image.uri, imageLoaded: true });
-      }
-    }).catch(err=> {
-      console.error(err)
-    })
+    Contacts.getContactByIdAsync(internalContactID)
+      .then(contact => {
+        if (contact) {
+          this.setState({ imgURI: contact.image.uri, imageLoaded: true });
+        }
+      })
+      .catch(err => {
+        console.error(err);
+      });
   };
 
   getCurrentCard = () => {
@@ -314,58 +315,63 @@ export default class Home extends React.Component {
     }
     const info = this.state.contact.contactBody.contactInfo;
     return (
-      <Swiper
-        ref="swiper"
-        loop={false}
-        showsPagination={false}
-        index={0}
-        horizontal={false}
-      >
-        {/*When swiped to the top*/}
-        <View style={styles.container}>
-          <View style={styles.imageView}>
-            {this.state.imageLoaded ? (
-              <Image style={styles.img} source={{ uri: this.state.imgURI }} />
-            ) : (
-              // <Image style={styles.img} source={require("../assets/img/mycardlogo.png")} />
+      <SafeAreaView style={styles.areaView}>
+        <Swiper
+          ref="swiper"
+          loop={false}
+          showsPagination={false}
+          index={0}
+          horizontal={false}
+        >
+          {/*When swiped to the top*/}
+          <View style={styles.container}>
+            <View style={styles.imageView}>
+              {this.state.imageLoaded ? (
+                <Image style={styles.img} source={{ uri: this.state.imgURI }} />
+              ) : (
+                // <Image style={styles.img} source={require("../assets/img/mycardlogo.png")} />
 
-              <ActivityIndicator />
-            )}
+                <ActivityIndicator />
+              )}
+            </View>
+            <View style={styles.nameView}>
+              <Text style={{ fontFamily: "Nunito-Light", fontSize: 30 }}>
+                Hi, I'm {info.firstName}
+              </Text>
+            </View>
+            <View style={styles.qrcodeView}>
+              <TouchableOpacity onPress={() => this.onClickQrCode()}>
+                <QRCode
+                  content={this.state.contact.vCardUrl}
+                  codeStyle="dot"
+                  innerEyeStyle="circle"
+                  outerEyeStyle="circle"
+                  logoSize={70}
+                  logo={require("../assets/img/mycardlogo.png")}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.cameraButtonView}>
+              <TouchableOpacity
+                style={styles.bigButton}
+                onPress={() => this.refs.swiper.scrollBy(1)}
+              >
+                <Image
+                  style={styles.cameraButton}
+                  resizeMode="contain"
+                  source={require("../assets/img/cameraButton.png")}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.nameView}>
-            <Text style={{ fontFamily: "Nunito-Light", fontSize: 30 }}>
-              Hi, I'm {info.firstName}
-            </Text>
-          </View>
-          <View style={styles.qrcodeView}>
-            <TouchableOpacity onPress={() => this.onClickQrCode()}>
-              <QRCode
-                content={this.state.contact.vCardUrl}
-                codeStyle="dot"
-                innerEyeStyle="circle"
-                outerEyeStyle="circle"
-                logoSize={70}
-                logo={require("../assets/img/mycardlogo.png")}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.cameraButtonView}>
-            <TouchableOpacity
-              style={styles.bigButton}
-              onPress={() => this.refs.swiper.scrollBy(1)}
-            >
-              <Image
-                style={styles.cameraButton}
-                resizeMode="contain"
-                source={require("../assets/img/cameraButton.png")}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/*When swiped to the bottom*/}
-        <CameraView  getCurrentAccessToken={this.getCurrentAccessToken} API={API}/>
-      </Swiper>
+          {/*When swiped to the bottom*/}
+          <CameraView
+            getCurrentAccessToken={this.getCurrentAccessToken}
+            API={API}
+          />
+        </Swiper>
+      </SafeAreaView>
     );
   }
 }
