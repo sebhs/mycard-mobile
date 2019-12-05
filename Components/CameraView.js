@@ -131,22 +131,22 @@ export default class CameraView extends React.Component {
     } else {
       const cardID = data.match(new RegExp("o/" + "(.*)" + ".vcf"))[1];
       const { API, getCurrentAccessToken } = this.props;
-      console.log(`API: ${API} getCurrentAccessToken${getCurrentAccessToken}`)
+        
+      console.log(`cardID:${cardID} API: ${API} getCurrentAccessToken${getCurrentAccessToken()}`)
       fetch(`${API}/addCard/${cardID}`, {
         headers: new Headers({
           Authorization: "Bearer " + getCurrentAccessToken()
         })
       })
         .then(() => {
+          console.log("Added")
           this.setState({ scanned: false });
         })
         .catch(err => {
-          console.error(err);
+          console.log(err);
         });
     }
     //this.downloadContact(data)
-    console.log(
-      `Bar code with type ${type} and data ${data} has been scanned!`
-    );
+  
   };
 }

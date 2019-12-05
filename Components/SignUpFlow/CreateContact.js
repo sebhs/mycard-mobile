@@ -12,7 +12,9 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
   Keyboard,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  ScrollView,
+  Permissions
 } from "react-native";
 import * as Font from "expo-font";
 import { TextField } from "react-native-material-textfield";
@@ -21,7 +23,89 @@ import * as Contacts from "expo-contacts";
 
 const api = "https://us-central1-mycard-93892.cloudfunctions.net/api";
 
+export default class CreateContact extends React.Component {
+  constructor() {
+    super();
+    this.state = {
+        contactID: 0
+    };
+  }
+
+
+
+  async componentDidMount() {
+    const name = this.props.navigation.getParam("name", "");
+    console.log(name);
+    try {
+      const { data } = await Contacts.getContactsAsync({
+        name: name.fullName
+
+      });
+      if (data.length > 0) {
+        const contact = data[0]; //TODO: handle multiple contacts
+        this.setState({contactID: contact.id})
+        this.editContact(contact.id)
+      } else {
+        const contact = {
+            [Contacts.Fields.FirstName]: name.firstName,
+            [Contacts.Fields.LastName]: name.lastName,
+          };
+          const contactID = await Contacts.addContactAsync(contact);
+          this.setState({contactID: contactID})
+          this.editContact(contactID)
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  editContact = async (contactID) => {
+    await Contacts.presentFormAsync(contactID,null, {
+        cancelButtonTitle: "Done"
+    });
+    Alert.alert(
+        'Edit your account',
+        'Hit edit and add the information you want to share',
+        [             
+          {text: 'Got it!'},
+        ],
+        {cancelable: false},
+      );
+  }
+
+  handleNext = async () => {
+    this.props.navigation.navigate('SocialMedia', {contactID: this.state.contactID})
+  };
+  handleEditContact = async () => {
+    this.editContact(this.state.contactID)
+  };
+
+  render() {
+    return (
+      <SafeAreaView style={styles.areaView}>
+        <View style={styles.message}>
+          <Text style={{ fontFamily: "PoiretOne", fontSize: 24 }}>
+            Done? Just hit next!
+          </Text>
+        </View>
+        <View style={styles.inputField}>
+          <TouchableOpacity style={styles.button} onPress={this.handleEditContact}>
+            <Text style={styles.buttontext}>Edit Contact</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={this.handleNext}>
+            <Text style={styles.buttontext}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+}
+
 const styles = StyleSheet.create({
+  areaView: {
+    flex: 1,
+    backgroundColor: "#ffffff"
+  },
   container: {
     flex: 1,
     padding: "7%",
@@ -60,116 +144,3 @@ const styles = StyleSheet.create({
     fontSize: 23
   }
 });
-
-export default class CreateContact extends React.Component {
-  constructor() {
-    super();
-    this.state = {
-      loaded: false
-    };
-  }
-
-  firstNameFieldRef = React.createRef();
-  lastNameFieldRef = React.createRef();
-  phoneNumberFieldRef = React.createRef();
-  emailFieldRef = React.createRef();
-
-  async componentDidMount() {
-    // await this.retrieveToken();
-    // const newContactId = await Contacts.addContactAsync();
-    // await Contacts.presentFormAsync(newContactId, null, {
-    //   shouldShowLinkedContacts: true
-    // });
-    // ContactsWrapper.getContact()
-    //   .then(contact => {
-    //     // Replace this code
-    //     console.log(contact);
-    //   })
-    //   .catch(error => {
-    //     console.log("ERROR CODE: ", error.code);
-    //     console.log("ERROR MESSAGE: ", error.message);
-    //   });
-    // Contacts.presentFormAsync(null,null,{isNew:true,shouldShowLinkedContacts:true}).then
-  }
-  formatText = text => {
-    return text.replace(/[^+\d]/g, "");
-  };
-
-  retrieveToken = async () => {
-    try {
-      const value = await AsyncStorage.getItem("user-token");
-      if (value !== null) {
-        // We have data!!
-        console.log(value);
-      }
-    } catch (error) {
-      console.err(error);
-    }
-  };
-  handleNext = async () => {
-    const { current: firstName } = this.firstNameFieldRef;
-    const { current: lastName } = this.lastNameFieldRef;
-    const { current: phoneNumber } = this.phoneNumberFieldRef;
-    const { current: email } = this.emailFieldRef;
-    if(firstName.value().trim() === "") {
-      Alert.alert("Fields cannot be empty")
-      return;
-    }
-
-  };
-  render() {
-    return (
-
-      <TouchableWithoutFeedback
-        onPress={() => {
-          Keyboard.dismiss();
-        }}
-      >
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" enabled>
-        <ScrollView>
-
-          <View style={styles.message}>
-            <Text style={{ fontFamily: "PoiretOne", fontSize: 32 }}>
-              Create your contact
-            </Text>
-          </View>
-          <View style={styles.inputField}>
-            <TextField
-              label="Your First Name"
-              onChangeText={this.formatText}
-              onSubmitEditing={this.onSubmit}
-              ref={this.firstNameFieldRef}
-            />
-            <TextField
-              label="Your Last Name"
-              onChangeText={this.formatText}
-              onSubmitEditing={this.onSubmit}
-              ref={this.lastNameFieldRef}
-            />
-            <TextField
-              label="Your Phone Number"
-              onChangeText={this.formatText}
-              formatText={this.formatText}
-              keyboardType="phone-pad"
-              onSubmitEditing={this.onSubmit}
-              ref={this.phoneNumberFieldRef}
-            />
-            <TextField
-              label="Your Email"
-              onChangeText={this.formatText}
-              onSubmitEditing={this.onSubmit}
-              ref={this.emailFieldRef}
-            />
-
-            <TouchableOpacity style={styles.button} onPress={this.handleNext}>
-              <Text style={styles.buttontext}>Next</Text>
-            </TouchableOpacity>
-          </View>
-         </ScrollView>
-
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-
-    );
-  }
-}

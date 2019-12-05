@@ -11,7 +11,7 @@ export default class AuthScreen extends React.Component {
     render() {
       return (
         <View style={styles.container}>
-          <Button title="Log in!" onPress={this.loginUser} />
+          <Button title="Sign Up!" onPress={this.loginUser} />
         </View>
       );
     }
@@ -21,17 +21,16 @@ export default class AuthScreen extends React.Component {
         email: "neo.davis@gmail.com",
         password: "password12345"
       };
-      // const { valid, errors } = validateLoginData(user); TODO: validate Data when login
       return firebase
         .auth()
         .signInWithEmailAndPassword(user.email, user.password)
         .then(loginObj => {
           //loginObj = JSON.parse(JSON.stringify(loginObj)); //this is the weirdest thing ever - no idea why I have to do this... but doesn't work without it WTF!
-          this.props.navigation.navigate("App");
+          this.props.navigation.navigate("SignupFlow");
         })
         .catch(err => {
           console.error(err);
-          Alert.alert(err); //TODO: Test
+          Alert.alert(err); 
         });
     };
   }

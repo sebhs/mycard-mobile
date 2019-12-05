@@ -5,33 +5,28 @@ import {
   View,
   Image,
   SafeAreaView,
-  Dimensions,
-  Button,
   TouchableOpacity,
   Alert,
   Keyboard,
+  ActivityIndicator,
   TouchableWithoutFeedback
 } from "react-native";
-import {
-  TextField,
-  FilledTextField,
-  OutlinedTextField
-} from "react-native-material-textfield";
-import { createStackNavigator } from "react-navigation-stack";
-
+import { TextField } from "react-native-material-textfield";
 import firestore from "../firebase";
 import firebase from "firebase";
 
-export default class Login extends React.Component {
+export default class Signup extends React.Component {
   constructor() {
     super();
     this.state = {
-      email: ""
+      email: "",
+      loading:false
     };
   }
 
   emailFieldRef = React.createRef();
   passwordFieldRef = React.createRef();
+  confirmPasswordFieldRef = React.createRef();
 
   onSubmit = () => {
     Keyboard.dismiss();
@@ -41,10 +36,15 @@ export default class Login extends React.Component {
     console.log(email.value());
   };
 
-  handleLogin = () => {
+  handleSignup = () => {
     const { current: email } = this.emailFieldRef;
     const { current: password } = this.passwordFieldRef;
-    if (email.value().trim() !== "" && password.value().trim() !== "") {
+    const { current: confirmPassword } = this.confirmPasswordFieldRef;
+    if (
+      email.value().trim() !== "" &&
+      password.value().trim() !== "" &&
+      confirmPassword.value().trim() !== ""
+    ) {
       const emailRegEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
       if (
         !email
@@ -55,40 +55,71 @@ export default class Login extends React.Component {
         Alert.alert("Invalid Email", "Please choose a valid email");
         return;
       }
-
-      loginBody = {
+      if (password.value().trim() !== confirmPassword.value().trim()) {
+        Alert.alert(
+          "Passwords don't match",
+          "Please make sure passwords match"
+        );
+        return;
+      }
+      signupBody = {
         email: email.value(),
-        password: password.value()
+        password: password.value(),
+        confirmPassword: confirmPassword.value()
       };
-      this.loginUser(loginBody);
+      this.signupUser(signupBody)
     } else {
       Alert.alert("Fields incomplete", "Please fill out all the fields");
       return;
     }
+    
   };
-  loginUser = loginBody => {
-    // const { valid, errors } = validateLoginData(user); TODO: validate Data when login
+  signupUser = signupBody => {
+    this.setState({loading:true});
     return firebase
       .auth()
-      .signInWithEmailAndPassword(loginBody.email, loginBody.password)
-      .then(loginObj => {
-        //loginObj = JSON.parse(JSON.stringify(loginObj)); //this is the weirdest thing ever - no idea why I have to do this... but doesn't work without it WTF!
-        this.props.navigation.navigate("Home");
+      .createUserWithEmailAndPassword(signupBody.email, signupBody.password)
+      .then(data => {
+        const userID = data.user.uid;
+        const userCredentials = {
+          email: signupBody.email,
+          createdAt: new Date().toISOString(),
+          userID,
+          currentCard: ""
+        };
+        return firestore.doc(`/users/${userCredentials.userID}`).set(userCredentials);
+      }).then(() => {
+        this.props.navigation.navigate("SignupFlow");
       })
       .catch(err => {
+        this.setState({loading:false});
         console.log(err);
-        Alert.alert("Login failed", "Email and password do not match");
+        Alert.alert("Signup failed");
       });
-  };
-  moveToSignup = () => {
-    this.props.navigation.navigate("Signup");
+
   };
 
+  handleSignupTEST = () => {
+    this.props.navigation.navigate("SignupFlow");
+  };
+
+  moveToLogin = () => {
+    this.props.navigation.navigate("Login");
+  };
   formatText = text => {
     return text.replace(/[^+\d]/g, "");
   };
 
   render() {
+    {
+      if (this.state.loading) {
+        return (
+          <View style={styles.loadingScreen}>
+            <ActivityIndicator />
+          </View>
+        );
+      }
+    }
     return (
       <SafeAreaView style={styles.areaView}>
         <TouchableWithoutFeedback
@@ -118,7 +149,7 @@ export default class Login extends React.Component {
                 keyboardType="email-address"
                 onChangeText={this.formatText}
                 onSubmitEditing={this.onSubmit}
-                autoCapitalize = 'none'
+                autoCapitalize="none"
                 ref={this.emailFieldRef}
               />
               <TextField
@@ -128,20 +159,27 @@ export default class Login extends React.Component {
                 secureTextEntry={true}
                 ref={this.passwordFieldRef}
               />
+              <TextField
+                label="confirm password"
+                onChangeText={this.formatText}
+                onSubmitEditing={this.onSubmit}
+                secureTextEntry={true}
+                ref={this.confirmPasswordFieldRef}
+              />
+
               <TouchableOpacity
                 style={styles.button}
-                onPress={this.handleLogin}
+                onPress={this.handleSignup}
               >
-                <Text style={styles.buttontext}>Log In</Text>
+                <Text style={styles.buttontext}>Sign Up</Text>
               </TouchableOpacity>
               <View style={styles.goToLoginClick}>
-                <TouchableWithoutFeedback onPress={this.moveToSignup}>
-
+                <TouchableWithoutFeedback onPress={this.moveToLogin}>
                   <Text style={styles.goToLoginText}>
-                    Not a user yet? Click here to Signup
+                    Already a user? Click here to Login
                   </Text>
-                  </TouchableWithoutFeedback>
-                </View>
+                </TouchableWithoutFeedback>
+              </View>
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -164,7 +202,6 @@ const styles = StyleSheet.create({
     paddingTop: "10%",
     flex: 1.2,
     resizeMode: "contain",
-    // width: Dimensions.get("window").width * 0.7,
     alignSelf: "center"
   },
   welcome: {
@@ -194,15 +231,19 @@ const styles = StyleSheet.create({
     fontSize: 23
   },
   goToLoginClick: {
-    flex:0.5,
-    padding:"5%",
+    flex: 0.5,
+    padding: "5%",
     textAlign: "center",
     alignItems: "center"
   },
   goToLoginText: {
     textDecorationLine: "underline",
     fontFamily: "Nunito-Light",
-    color:"#A9A9A9",
+    color: "#A9A9A9",
     fontSize: 16
-  }
+  },
+  loadingScreen: {
+    flex: 1,
+    justifyContent: "center"
+  },
 });

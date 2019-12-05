@@ -10,6 +10,7 @@ import firebase from "firebase";
 import firestore from "./../firebase"
 import * as Font from "expo-font";
 
+//TODO: ask for permission to use contacts (only allow with contacts) and maybe camera?
 export default class AuthLoadingScreen extends React.Component {
    componentDidMount() {
     Font.loadAsync({
@@ -25,7 +26,7 @@ export default class AuthLoadingScreen extends React.Component {
           loggedIn = false;
         }
       });
-      this.props.navigation.navigate(loggedIn ? 'App' : 'Auth');
+      this.props.navigation.navigate(loggedIn ? 'App' : 'Signup');
     })
 
   }

@@ -1,4 +1,5 @@
-import CreateContact from './CreateContact'
+import InputName from './InputName'
 import SocialMedia from './SocialMedia'
-import Signup from './Signup'
-export {Signup,SocialMedia,CreateContact}
+import CreateContact from './CreateContact'
+
+export {SocialMedia,InputName,CreateContact}
